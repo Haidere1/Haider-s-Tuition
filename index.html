@@ -57,6 +57,7 @@ h2{margin:0 0 12px;font-size:22px}
 .err{color:var(--red);font-weight:700;margin-top:8px}
 footer{text-align:center;color:var(--muted);margin:24px 0 8px;font-size:14px}
 </style>
+<!-- Compat SDKs only (no modular imports) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -64,19 +65,14 @@ footer{text-align:center;color:var(--muted);margin:24px 0 8px;font-size:14px}
 <body>
 <div class="wrap">
   <div class="bar0"><div class="logo"><span>⭐</span> Star Tutors</div><div><span id="st" class="muted"></span> <span id="who"></span></div></div>
-  <div id="view"></div>
+  <div id="view"><div class="card"><h2>Loading…</h2><p class="muted">If this stays here, the script has an error. It will appear in a box on this page.</p></div></div>
   <footer>Made with 💛 by your tuition center teachers</footer>
 </div>
 <script>
-// >>> 1. Paste your Firebase web config (Project settings -> Your apps -> Web app) <<<
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+window.addEventListener('error',function(e){var v=document.getElementById('view');if(v)v.insertAdjacentHTML('afterbegin','<div class="card"><h2>⚠️ Error</h2><p>'+String(e.message).replace(/</g,'&lt;')+'</p><p>Most common cause: the Firebase config was pasted wrongly in index.html.</p></div>')});
+</script>
+<script>
+// ===== Firebase config (keep your real values) =====
 const firebaseConfig = {
   apiKey: "AIzaSyBUmjqrySlFdzNRPYmoRFuDxvUZ303aNJU",
   authDomain: "infinityx-ca220.firebaseapp.com",
@@ -88,108 +84,242 @@ const firebaseConfig = {
   measurementId: "G-RG2ZT4754S"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Teacher account email (must exist in Firebase Authentication)
+const ADMIN_EMAIL = 'syedfaizanhaider.fh@gmail.com';
 
-// >>> 2. The email of the teacher account you create in Firebase Authentication <<<
-const ADMIN_EMAIL='syedfaizanhaider.fh@gmail.com';
-const EM=['🦄','🦖','🐼','🦊','🐯','🐸','🐙','🚀','🦁','🐰'], PAL=['#ffb3d1','#b8f0c8','#ffe08a','#a9dcff','#d6c4ff'];
-const L={done:'✅ Done!',todo:'📝 To do',late:'⏰ Late',prog:'🏃 In progress'};
-let S={students:[]},role=null,cur=null,adding=false,err='',armed=-1,timers={},auth,db;
-const cfgOk=!!firebaseConfig.projectId&&!!ADMIN_EMAIL, cfgErr='Setup not finished: add your Firebase config and teacher email in index.html';
-if(cfgOk){firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.firestore()}
-const today=()=>new Date().toISOString().slice(0,10);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const stat=t=>{const e=document.getElementById('st');if(e)e.textContent=t};
-const AL='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const newCode=()=>{const b=new Uint32Array(8);crypto.getRandomValues(b);return[...b].map(x=>AL[x%AL.length]).join('')};
-const pub=s=>{const{priv,...p}=s;return p};
-async function enter(r,code){
- if(r==='admin'){const[a,b]=await Promise.all([db.collection('students').get(),db.collection('private').get()]);
-  const pv={};b.forEach(d=>pv[d.id]=d.data().priv||'');
-  S.students=a.docs.map(d=>({...d.data(),code:d.id,priv:pv[d.id]||''})).sort((x,y)=>(x.created||0)-(y.created||0))}
- else{const d=await db.collection('students').doc(code).get();if(!d.exists)throw new Error('nf');S.students=[{...d.data(),code:d.id}];cur=0}
- role=r}
-async function adminLogin(){if(!cfgOk){err=cfgErr;return render()}
- try{await auth.signInWithEmailAndPassword(ADMIN_EMAIL,document.getElementById('pw').value);await enter('admin');err=''}
- catch(e){const c=e.code||'';err=c==='auth/too-many-requests'?'Too many tries. Wait a few minutes.':c.startsWith('auth/')?'Wrong password 🙈':'Error: '+e.message}render()}
-async function parentLogin(){if(!cfgOk){err=cfgErr;return render()}
- const c=document.getElementById('pc').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
- if(!c){err='Please type your code';return render()}
- try{await enter('parent',c);try{sessionStorage.setItem('st_code',c)}catch(e){}err=''}catch(e){err='Code not found 🔍'}render()}
-function logout(){try{sessionStorage.removeItem('st_code')}catch(e){}if(auth)auth.signOut();role=null;cur=null;adding=false;err='';armed=-1;S.students=[];stat('');render()}
-function save(i=cur){if(role!=='admin'||i==null||!S.students[i])return;const c=S.students[i].code;clearTimeout(timers[c]);stat('Saving…');
- timers[c]=setTimeout(async()=>{const s=S.students.find(x=>x.code===c);if(!s)return;try{const b=db.batch();
-  b.set(db.collection('students').doc(c),pub(s));b.set(db.collection('private').doc(c),{priv:s.priv||''});await b.commit();stat('✅ Saved')}
-  catch(e){stat('⚠️ Not saved: '+e.message)}},600)}
-function setp(p,v,n){const k=p.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o[k[i]];o[k[k.length-1]]=n?(Number(v)||0):v;save(Number(k[1]))}
-const inp=(p,v,o={})=>`<input type="${o.t||'text'}" value="${esc(v)}" ${o.ph?`placeholder="${o.ph}"`:''} ${o.w?`style="width:${o.w}"`:''} oninput="setp('${p}',this.value,${!!o.n})">`;
-async function addStudent(){const g=id=>document.getElementById(id).value;const n=g('an').trim();if(!n){err='Please type a name';return render()}
- try{const s={code:newCode(),name:n,age:Number(g('aa'))||9,emoji:g('ae'),parent:g('ap').trim(),stars:0,streak:0,subjects:[{n:'Math',p:0},{n:'English',p:0}],weak:[],tasks:[],sessions:[],note:'',priv:'',created:Date.now()};
-  const b=db.batch();b.set(db.collection('students').doc(s.code),pub(s));b.set(db.collection('private').doc(s.code),{priv:''});await b.commit();
-  S.students.push(s);adding=false;err='';cur=S.students.length-1}catch(e){err=e.message}render()}
-async function delStudent(i){if(armed!==i){armed=i;return render()}
- try{const c=S.students[i].code,b=db.batch();b.delete(db.collection('students').doc(c));b.delete(db.collection('private').doc(c));await b.commit();S.students.splice(i,1);armed=-1;cur=null}catch(e){stat('⚠️ '+e.message)}render()}
-const add=(i,k,o)=>{S.students[i][k].unshift(o);save(i);render()},del=(i,k,j)=>{S.students[i][k].splice(j,1);save(i);render()};
-function addWeak(i){const el=document.getElementById('wk'),v=el.value.trim();if(v){S.students[i].weak.push(v);save(i);render()}}
+const EM = ['🦄','🦖','🐼','🦊','🐯','🐸','🐙','🚀','🦁','🐰'];
+const PAL = ['#ffb3d1','#b8f0c8','#ffe08a','#a9dcff','#d6c4ff'];
+const L = {done:'✅ Done!',todo:'📝 To do',late:'⏰ Late',prog:'🏃 In progress'};
 
-function loginHTML(){return `<div class="grid" style="margin-top:18px">
+let S = {students:[]}, role = null, cur = null, adding = false, err = '', armed = -1, timers = {}, auth, db;
+let cfgOk = !!(firebaseConfig.projectId && ADMIN_EMAIL);
+let cfgErr = 'Setup not finished: add your Firebase config (projectId etc.) in index.html';
+
+try {
+  if (cfgOk) {
+    if (typeof firebase === 'undefined') throw new Error('Firebase could not load. Check your internet or turn off ad blockers.');
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  }
+} catch (e) {
+  cfgOk = false;
+  cfgErr = e.message;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const stat = t => { const e = document.getElementById('st'); if (e) e.textContent = t; };
+const AL = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const newCode = () => { const b = new Uint32Array(8); crypto.getRandomValues(b); return [...b].map(x => AL[x % AL.length]).join(''); };
+const pub = s => { const {priv, ...p} = s; return p; };
+
+async function enter(r, code) {
+  if (r === 'admin') {
+    const [a, b] = await Promise.all([db.collection('students').get(), db.collection('private').get()]);
+    const pv = {};
+    b.forEach(d => pv[d.id] = d.data().priv || '');
+    S.students = a.docs.map(d => ({...d.data(), code: d.id, priv: pv[d.id] || ''})).sort((x, y) => (x.created || 0) - (y.created || 0));
+  } else {
+    const d = await db.collection('students').doc(code).get();
+    if (!d.exists) throw new Error('nf');
+    S.students = [{...d.data(), code: d.id}];
+    cur = 0;
+  }
+  role = r;
+}
+
+async function adminLogin() {
+  if (!cfgOk) { err = cfgErr; return render(); }
+  try {
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, document.getElementById('pw').value);
+    await enter('admin');
+    err = '';
+  } catch (e) {
+    const c = e.code || '';
+   err = 'REAL ERROR → ' + (e.code || '') + ' | ' + (e.message || '');
+  }
+  render();
+}
+
+async function parentLogin() {
+  if (!cfgOk) { err = cfgErr; return render(); }
+  const c = document.getElementById('pc').value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  if (!c) { err = 'Please type your code'; return render(); }
+  try {
+    await enter('parent', c);
+    try { sessionStorage.setItem('st_code', c); } catch (e) {}
+    err = '';
+  } catch (e) {
+    err = 'Code not found 🔍';
+  }
+  render();
+}
+
+function logout() {
+  try { sessionStorage.removeItem('st_code'); } catch (e) {}
+  if (auth) auth.signOut();
+  role = null; cur = null; adding = false; err = ''; armed = -1; S.students = [];
+  stat('');
+  render();
+}
+
+function save(i = cur) {
+  if (role !== 'admin' || i == null || !S.students[i]) return;
+  const c = S.students[i].code;
+  clearTimeout(timers[c]);
+  stat('Saving…');
+  timers[c] = setTimeout(async () => {
+    const s = S.students.find(x => x.code === c);
+    if (!s) return;
+    try {
+      const b = db.batch();
+      b.set(db.collection('students').doc(c), pub(s));
+      b.set(db.collection('private').doc(c), {priv: s.priv || ''});
+      await b.commit();
+      stat('✅ Saved');
+    } catch (e) {
+      stat('⚠️ Not saved: ' + e.message);
+    }
+  }, 600);
+}
+
+function setp(p, v, n) {
+  const k = p.split('.');
+  let o = S;
+  for (let i = 0; i < k.length - 1; i++) o = o[k[i]];
+  o[k[k.length - 1]] = n ? (Number(v) || 0) : v;
+  save(Number(k[1]));
+}
+
+const inp = (p, v, o = {}) =>
+  `<input type="${o.t || 'text'}" value="${esc(v)}" ${o.ph ? `placeholder="${o.ph}"` : ''} ${o.w ? `style="width:${o.w}"` : ''} oninput="setp('${p}',this.value,${!!o.n})">`;
+
+async function addStudent() {
+  const g = id => document.getElementById(id).value;
+  const n = g('an').trim();
+  if (!n) { err = 'Please type a name'; return render(); }
+  try {
+    const s = {
+      code: newCode(), name: n, age: Number(g('aa')) || 9, emoji: g('ae'), parent: g('ap').trim(),
+      stars: 0, streak: 0, subjects: [{n: 'Math', p: 0}, {n: 'English', p: 0}],
+      weak: [], tasks: [], sessions: [], note: '', priv: '', created: Date.now()
+    };
+    const b = db.batch();
+    b.set(db.collection('students').doc(s.code), pub(s));
+    b.set(db.collection('private').doc(s.code), {priv: ''});
+    await b.commit();
+    S.students.push(s);
+    adding = false; err = ''; cur = S.students.length - 1;
+  } catch (e) {
+    err = e.message;
+  }
+  render();
+}
+
+async function delStudent(i) {
+  if (armed !== i) { armed = i; return render(); }
+  try {
+    const c = S.students[i].code;
+    const b = db.batch();
+    b.delete(db.collection('students').doc(c));
+    b.delete(db.collection('private').doc(c));
+    await b.commit();
+    S.students.splice(i, 1);
+    armed = -1; cur = null;
+  } catch (e) {
+    stat('⚠️ ' + e.message);
+  }
+  render();
+}
+
+const add = (i, k, o) => { S.students[i][k].unshift(o); save(i); render(); };
+const del = (i, k, j) => { S.students[i][k].splice(j, 1); save(i); render(); };
+
+function addWeak(i) {
+  const el = document.getElementById('wk');
+  const v = el.value.trim();
+  if (v) { S.students[i].weak.push(v); save(i); render(); }
+}
+
+function loginHTML() {
+  return `<div class="grid" style="margin-top:18px">
  <div class="card" style="margin:0"><h2>👨‍👩‍👧 Parents</h2><p class="muted">Type the code your teacher gave you.</p><div class="row"><div><input id="pc" placeholder="8-letter code" onkeydown="if(event.key=='Enter')parentLogin()"></div><button class="btn" onclick="parentLogin()">See report</button></div></div>
  <div class="card" style="margin:0"><h2>👩‍🏫 Teacher</h2><p class="muted">Password needed to add or edit students.</p><div class="row"><div><input id="pw" type="password" placeholder="Password" onkeydown="if(event.key=='Enter')adminLogin()"></div><button class="btn p" onclick="adminLogin()">Login</button></div></div></div>
- ${err?`<div class="err">${err}</div>`:''}`}
-
-function home(){
- const form=adding?`<div class="card"><h2>➕ New student</h2><div class="row"><div><label>Name</label><input id="an"></div><div><label>Age</label><input id="aa" type="number" value="9"></div><div><label>Avatar</label><select id="ae">${EM.map(e=>`<option>${e}</option>`).join('')}</select></div><div><label>Parent name</label><input id="ap"></div></div><p class="muted">A parent code is made automatically. You can change it later.</p><button class="btn" onclick="addStudent()">Save student</button> <button class="btn y" onclick="adding=false;err='';render()">Cancel</button>${err?`<div class="err">${err}</div>`:''}</div>`:'';
- return `<div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">🎒 My Students (${S.students.length})</h2><button class="btn p" onclick="adding=true;render()">➕ Add student</button></div>
- <div class="grid" style="margin-top:14px">${S.students.map((s,i)=>`<div class="stu" onclick="cur=${i};render()"><div class="em">${esc(s.emoji)}</div><div><b>${esc(s.name)||'(no name)'}</b><br><small>Age ${esc(s.age)} • Parent: ${esc(s.parent)||'—'}</small><br><small>Code: ${esc(s.code)}</small></div></div>`).join('')||'<p>No students yet.</p>'}</div></div>${form}`}
-
-function detail(i){
- const s=S.students[i],E=role==='admin',b=`students.${i}`;
- const done=s.tasks.filter(t=>t.st==='done').length,late=s.tasks.filter(t=>t.st==='late').length;
- const dt=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
- return `
- <div class="card hero"><div class="avatar">${esc(s.emoji)}</div><div style="flex:1;min-width:200px">
- ${E?`<div class="row"><div><label>Name</label>${inp(b+'.name',s.name)}</div><div style="max-width:90px"><label>Age</label>${inp(b+'.age',s.age,{t:'number',n:1})}</div></div>
- <div class="row" style="margin-top:8px"><div><label>Parent name</label>${inp(b+'.parent',s.parent)}</div><div><label>Parent code (give this to the parent)</label><input value="${esc(s.code)}" readonly onclick="this.select()"></div><div style="max-width:90px"><label>Avatar</label><select onchange="setp('${b}.emoji',this.value);render()">${EM.map(e=>`<option ${e===s.emoji?'selected':''}>${e}</option>`).join('')}</select></div></div>`
- :`<h1>Hi, parent of ${esc(s.name)}! 👋</h1><p>Age ${esc(s.age)} • Here is how ${esc(s.name)} is doing</p>`}</div></div>
- <div class="stats">
-  <div class="stat" style="background:var(--yellow)">${E?`⭐ ${inp(b+'.stars',s.stars,{t:'number',n:1})}`:`<b>⭐ ${s.stars}</b>`}Stars earned</div>
-  <div class="stat" style="background:#ffb3d1">${E?`🔥 ${inp(b+'.streak',s.streak,{t:'number',n:1})}`:`<b>🔥 ${s.streak}</b>`}Day streak</div>
-  <div class="stat" style="background:var(--green)"><b>✅ ${done}/${s.tasks.length}</b>Tasks done</div>
-  <div class="stat" style="background:${late?'#ff9a9a':'#b8f0c8'}"><b>⏰ ${late}</b>Late tasks</div></div>
-
- <div class="card"><h2>📊 Subject Progress</h2><div class="grid">${s.subjects.map((x,j)=>`<div class="sub" style="background:${PAL[j%5]}"><div class="ring" style="--p:${x.p}"><i>${x.p}%</i></div><div style="flex:1">
- ${E?`${inp(`${b}.subjects.${j}.n`,x.n,{w:'100%'})}<input type="range" min="0" max="100" value="${x.p}" style="width:100%;padding:0" oninput="setp('${b}.subjects.${j}.p',this.value,1);this.parentNode.previousElementSibling.style.setProperty('--p',this.value);this.parentNode.previousElementSibling.firstChild.textContent=this.value+'%'" ><button class="btn r s" onclick="del(${i},'subjects',${j})">Remove</button>`:`<div style="font-size:21px;font-weight:700">${esc(x.n)}</div><div>${x.p>=80?'Superstar! 🌟':x.p>=70?'Doing well! 👍':'Keep going! 💪'}</div>`}</div></div>`).join('')}</div>
- ${E?`<button class="btn s y" style="margin-top:10px" onclick="S.students[${i}].subjects.push({n:'New subject',p:0});save();render()">➕ Subject</button>`:''}</div>
-
- <div class="card"><h2>🎯 ${E?'Weaknesses (what needs practice)':'Let\'s practise these'}</h2>
- ${s.weak.map((w,j)=>`<span class="chip">${esc(w)}${E?`<button onclick="del(${i},'weak',${j})">×</button>`:''}</span>`).join('')||'<p class="muted">Nothing noted yet.</p>'}
- ${E?`<div class="row" style="margin-top:6px"><div><input id="wk" placeholder="e.g. Long division" onkeydown="if(event.key=='Enter')addWeak(${i})"></div><button class="btn" onclick="addWeak(${i})">Add</button></div>`:''}</div>
-
- <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">📅 Sessions & Reviews</h2>${E?`<button class="btn" onclick="add(${i},'sessions',{d:today(),topic:'',note:'',att:true})">➕ Session</button>`:''}</div><div style="margin-top:12px">
- ${s.sessions.map((x,j)=>E?`<div class="item"><div class="row"><div style="max-width:160px"><label>Date</label>${inp(`${b}.sessions.${j}.d`,x.d,{t:'date'})}</div><div><label>Topic</label>${inp(`${b}.sessions.${j}.topic`,x.topic)}</div><div style="max-width:130px"><label>Came?</label><select onchange="setp('${b}.sessions.${j}.att',this.value==='1'?true:false)"><option value="1" ${x.att?'selected':''}>✅ Came</option><option value="0" ${x.att?'':'selected'}>❌ Missed</option></select></div></div><label style="margin-top:8px">Review</label><textarea oninput="setp('${b}.sessions.${j}.note',this.value)">${esc(x.note)}</textarea><button class="btn r s" onclick="del(${i},'sessions',${j})">Delete</button></div>`
- :`<div class="item"><div class="h"><b>${esc(x.topic)||'Session'}</b><span class="muted">${dt(x.d)}</span><span class="tag ${x.att?'done':'late'}">${x.att?'✅ Came':'❌ Missed'}</span></div>${x.note?`<div class="muted" style="margin-top:6px">📝 ${esc(x.note)}</div>`:''}</div>`).join('')||'<p class="muted">No sessions yet.</p>'}</div></div>
-
- <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">📚 Assigned Tasks</h2>${E?`<button class="btn" onclick="add(${i},'tasks',{t:'',s:'Math',due:today(),st:'todo'})">➕ Task</button>`:''}</div><div style="margin-top:12px">
- ${s.tasks.map((x,j)=>E?`<div class="item"><div class="row"><div style="flex:2"><label>Task</label>${inp(`${b}.tasks.${j}.t`,x.t)}</div><div><label>Subject</label>${inp(`${b}.tasks.${j}.s`,x.s)}</div><div style="max-width:160px"><label>Due</label>${inp(`${b}.tasks.${j}.due`,x.due,{t:'date'})}</div><div style="max-width:150px"><label>Status</label><select onchange="setp('${b}.tasks.${j}.st',this.value);render()">${Object.keys(L).map(k=>`<option value="${k}" ${k===x.st?'selected':''}>${L[k]}</option>`).join('')}</select></div></div><button class="btn r s" style="margin-top:8px" onclick="del(${i},'tasks',${j})">Delete</button></div>`
- :`<div class="item"><div class="h"><span style="font-size:28px">${/math/i.test(x.s)?'🔢':'✏️'}</span><b>${esc(x.t)}<br><span class="muted">${esc(x.s)} • Due ${dt(x.due)}</span></b><span class="tag ${x.st}">${L[x.st]}</span></div></div>`).join('')||'<p class="muted">No tasks yet.</p>'}</div></div>
-
- <div class="card"><h2>💌 Message from Teacher</h2>${E?`<textarea oninput="setp('${b}.note',this.value)">${esc(s.note)}</textarea>`:`<div class="note"><span style="font-size:36px">👩‍🏫</span><div>${esc(s.note)||'No message yet.'}</div></div>`}</div>
- ${E?`<div class="card"><h2>🔒 Private notes (parents never see this)</h2><textarea oninput="setp('${b}.priv',this.value)">${esc(s.priv)}</textarea><br><br><button class="btn r" onclick="delStudent(${i})">${armed===i?'Really delete? Click again':'🗑 Delete student'}</button></div>`:''}`}
-
-function render(){
- document.getElementById('who').innerHTML=role?`<span class="pill">${role==='admin'?'👩‍🏫 Teacher mode':'👨‍👩‍👧 Parent'}</span> <button class="btn s y" onclick="logout()">Logout</button>`:'<span class="pill">Welcome!</span>';
- const v=document.getElementById('view');
- if(!role)v.innerHTML=loginHTML();
- else if(role==='parent')v.innerHTML=detail(cur);
- else v.innerHTML=cur===null?home():`<button class="btn" style="margin-top:16px" onclick="cur=null;armed=-1;render()">⬅ All students</button>${detail(cur)}`;
+ ${err ? `<div class="err">${err}</div>` : ''}`;
 }
-let first=true;
-function init(){if(!cfgOk){err=cfgErr;return render()}render();
- auth.onAuthStateChanged(async u=>{if(!first)return;first=false;
-  try{if(u&&u.email===ADMIN_EMAIL)await enter('admin');else{const c=sessionStorage.getItem('st_code');if(c)await enter('parent',c)}}catch(e){role=null}
-  render()})}
+
+function home() {
+  const form = adding ? `<div class="card"><h2>➕ New student</h2><div class="row"><div><label>Name</label><input id="an"></div><div><label>Age</label><input id="aa" type="number" value="9"></div><div><label>Avatar</label><select id="ae">${EM.map(e => `<option>${e}</option>`).join('')}</select></div><div><label>Parent name</label><input id="ap"></div></div><p class="muted">A parent code is made automatically. You can change it later.</p><button class="btn" onclick="addStudent()">Save student</button> <button class="btn y" onclick="adding=false;err='';render()">Cancel</button>${err ? `<div class="err">${err}</div>` : ''}</div>` : '';
+  return `<div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">🎒 My Students (${S.students.length})</h2><button class="btn p" onclick="adding=true;render()">➕ Add student</button></div>
+ <div class="grid" style="margin-top:14px">${S.students.map((s, i) => `<div class="stu" onclick="cur=${i};render()"><div class="em">${esc(s.emoji)}</div><div><b>${esc(s.name) || '(no name)'}</b><br><small>Age ${esc(s.age)} • Parent: ${esc(s.parent) || '—'}</small><br><small>Code: ${esc(s.code)}</small></div></div>`).join('') || '<p>No students yet.</p>'}</div></div>${form}`;
+}
+
+function detail(i) {
+  const s = S.students[i], E = role === 'admin', b = `students.${i}`;
+  const done = s.tasks.filter(t => t.st === 'done').length;
+  const late = s.tasks.filter(t => t.st === 'late').length;
+  const dt = d => d ? new Date(d).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : '';
+  return `
+ <div class="card hero"><div class="avatar">${esc(s.emoji)}</div><div style="flex:1;min-width:200px">
+ ${E ? `<div class="row"><div><label>Name</label>${inp(b + '.name', s.name)}</div><div style="max-width:90px"><label>Age</label>${inp(b + '.age', s.age, {t: 'number', n: 1})}</div></div>
+ <div class="row" style="margin-top:8px"><div><label>Parent name</label>${inp(b + '.parent', s.parent)}</div><div><label>Parent code (give this to the parent)</label><input value="${esc(s.code)}" readonly onclick="this.select()"></div><div style="max-width:90px"><label>Avatar</label><select onchange="setp('${b}.emoji',this.value);render()">${EM.map(e => `<option ${e === s.emoji ? 'selected' : ''}>${e}</option>`).join('')}</select></div></div>`
+ : `<h1>Hi, parent of ${esc(s.name)}! 👋</h1><p>Age ${esc(s.age)} • Here is how ${esc(s.name)} is doing</p>`}</div></div>
+ <div class="stats">
+  <div class="stat" style="background:var(--yellow)">${E ? `⭐ ${inp(b + '.stars', s.stars, {t: 'number', n: 1})}` : `<b>⭐ ${s.stars}</b>`}Stars earned</div>
+  <div class="stat" style="background:#ffb3d1">${E ? `🔥 ${inp(b + '.streak', s.streak, {t: 'number', n: 1})}` : `<b>🔥 ${s.streak}</b>`}Day streak</div>
+  <div class="stat" style="background:var(--green)"><b>✅ ${done}/${s.tasks.length}</b>Tasks done</div>
+  <div class="stat" style="background:${late ? '#ff9a9a' : '#b8f0c8'}"><b>⏰ ${late}</b>Late tasks</div></div>
+
+ <div class="card"><h2>📊 Subject Progress</h2><div class="grid">${s.subjects.map((x, j) => `<div class="sub" style="background:${PAL[j % 5]}"><div class="ring" style="--p:${x.p}"><i>${x.p}%</i></div><div style="flex:1">
+ ${E ? `${inp(`${b}.subjects.${j}.n`, x.n, {w: '100%'})}<input type="range" min="0" max="100" value="${x.p}" style="width:100%;padding:0" oninput="setp('${b}.subjects.${j}.p',this.value,1);this.parentNode.previousElementSibling.style.setProperty('--p',this.value);this.parentNode.previousElementSibling.firstChild.textContent=this.value+'%'" ><button class="btn r s" onclick="del(${i},'subjects',${j})">Remove</button>` : `<div style="font-size:21px;font-weight:700">${esc(x.n)}</div><div>${x.p >= 80 ? 'Superstar! 🌟' : x.p >= 70 ? 'Doing well! 👍' : 'Keep going! 💪'}</div>`}</div></div>`).join('')}</div>
+ ${E ? `<button class="btn s y" style="margin-top:10px" onclick="S.students[${i}].subjects.push({n:'New subject',p:0});save();render()">➕ Subject</button>` : ''}</div>
+
+ <div class="card"><h2>🎯 ${E ? 'Weaknesses (what needs practice)' : 'Let\'s practise these'}</h2>
+ ${s.weak.map((w, j) => `<span class="chip">${esc(w)}${E ? `<button onclick="del(${i},'weak',${j})">×</button>` : ''}</span>`).join('') || '<p class="muted">Nothing noted yet.</p>'}
+ ${E ? `<div class="row" style="margin-top:6px"><div><input id="wk" placeholder="e.g. Long division" onkeydown="if(event.key=='Enter')addWeak(${i})"></div><button class="btn" onclick="addWeak(${i})">Add</button></div>` : ''}</div>
+
+ <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">📅 Sessions & Reviews</h2>${E ? `<button class="btn" onclick="add(${i},'sessions',{d:today(),topic:'',note:'',att:true})">➕ Session</button>` : ''}</div><div style="margin-top:12px">
+ ${s.sessions.map((x, j) => E ? `<div class="item"><div class="row"><div style="max-width:160px"><label>Date</label>${inp(`${b}.sessions.${j}.d`, x.d, {t: 'date'})}</div><div><label>Topic</label>${inp(`${b}.sessions.${j}.topic`, x.topic)}</div><div style="max-width:130px"><label>Came?</label><select onchange="setp('${b}.sessions.${j}.att',this.value==='1'?true:false)"><option value="1" ${x.att ? 'selected' : ''}>✅ Came</option><option value="0" ${x.att ? '' : 'selected'}>❌ Missed</option></select></div></div><label style="margin-top:8px">Review</label><textarea oninput="setp('${b}.sessions.${j}.note',this.value)">${esc(x.note)}</textarea><button class="btn r s" onclick="del(${i},'sessions',${j})">Delete</button></div>`
+ : `<div class="item"><div class="h"><b>${esc(x.topic) || 'Session'}</b><span class="muted">${dt(x.d)}</span><span class="tag ${x.att ? 'done' : 'late'}">${x.att ? '✅ Came' : '❌ Missed'}</span></div>${x.note ? `<div class="muted" style="margin-top:6px">📝 ${esc(x.note)}</div>` : ''}</div>`).join('') || '<p class="muted">No sessions yet.</p>'}</div></div>
+
+ <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">📚 Assigned Tasks</h2>${E ? `<button class="btn" onclick="add(${i},'tasks',{t:'',s:'Math',due:today(),st:'todo'})">➕ Task</button>` : ''}</div><div style="margin-top:12px">
+ ${s.tasks.map((x, j) => E ? `<div class="item"><div class="row"><div style="flex:2"><label>Task</label>${inp(`${b}.tasks.${j}.t`, x.t)}</div><div><label>Subject</label>${inp(`${b}.tasks.${j}.s`, x.s)}</div><div style="max-width:160px"><label>Due</label>${inp(`${b}.tasks.${j}.due`, x.due, {t: 'date'})}</div><div style="max-width:150px"><label>Status</label><select onchange="setp('${b}.tasks.${j}.st',this.value);render()">${Object.keys(L).map(k => `<option value="${k}" ${k === x.st ? 'selected' : ''}>${L[k]}</option>`).join('')}</select></div></div><button class="btn r s" style="margin-top:8px" onclick="del(${i},'tasks',${j})">Delete</button></div>`
+ : `<div class="item"><div class="h"><span style="font-size:28px">${/math/i.test(x.s) ? '🔢' : '✏️'}</span><b>${esc(x.t)}<br><span class="muted">${esc(x.s)} • Due ${dt(x.due)}</span></b><span class="tag ${x.st}">${L[x.st]}</span></div></div>`).join('') || '<p class="muted">No tasks yet.</p>'}</div></div>
+
+ <div class="card"><h2>💌 Message from Teacher</h2>${E ? `<textarea oninput="setp('${b}.note',this.value)">${esc(s.note)}</textarea>` : `<div class="note"><span style="font-size:36px">👩‍🏫</span><div>${esc(s.note) || 'No message yet.'}</div></div>`}</div>
+ ${E ? `<div class="card"><h2>🔒 Private notes (parents never see this)</h2><textarea oninput="setp('${b}.priv',this.value)">${esc(s.priv)}</textarea><br><br><button class="btn r" onclick="delStudent(${i})">${armed === i ? 'Really delete? Click again' : '🗑 Delete student'}</button></div>` : ''}`;
+}
+
+function render() {
+  document.getElementById('who').innerHTML = role
+    ? `<span class="pill">${role === 'admin' ? '👩‍🏫 Teacher mode' : '👨‍👩‍👧 Parent'}</span> <button class="btn s y" onclick="logout()">Logout</button>`
+    : '<span class="pill">Welcome!</span>';
+  const v = document.getElementById('view');
+  if (!role) v.innerHTML = loginHTML();
+  else if (role === 'parent') v.innerHTML = detail(cur);
+  else v.innerHTML = cur === null ? home() : `<button class="btn" style="margin-top:16px" onclick="cur=null;armed=-1;render()">⬅ All students</button>${detail(cur)}`;
+}
+
+let first = true;
+function init() {
+  if (!cfgOk) { err = cfgErr; return render(); }
+  render();
+  auth.onAuthStateChanged(async u => {
+    if (!first) return;
+    first = false;
+    try {
+      if (u && u.email === ADMIN_EMAIL) await enter('admin');
+      else {
+        const c = sessionStorage.getItem('st_code');
+        if (c) await enter('parent', c);
+      }
+    } catch (e) {
+      role = null;
+    }
+    render();
+  });
+}
 init();
 </script>
 </body>
