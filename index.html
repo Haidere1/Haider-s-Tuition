@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Star Tutors – Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#d9f1ff;--card:#fff;--ink:#2b2350;--line:#2b2350;--yellow:#ffd23f;--pink:#ff7eb6;--green:#5ed38b;--blue:#4cb7ff;--orange:#ff9f43;--red:#ff6b6b;--muted:#6d6690;--field:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d1840;--card:#2b2459;--ink:#fff8e1;--line:#0d0a26;--muted:#b9b2e6;--field:#1d1840}}
+:root[data-theme="dark"]{--bg:#1d1840;--card:#2b2459;--ink:#fff8e1;--line:#0d0a26;--muted:#b9b2e6;--field:#1d1840}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Fredoka','Comic Sans MS','Trebuchet MS',sans-serif;font-size:16px;background-image:radial-gradient(circle at 10% 20%,rgba(255,255,255,.4) 0 40px,transparent 41px),radial-gradient(circle at 85% 12%,rgba(255,255,255,.4) 0 55px,transparent 56px)}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+.bar0{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.logo{font-size:28px;font-weight:700;display:flex;gap:8px;align-items:center}
+.logo span{display:inline-block;animation:wob 2.5s ease-in-out infinite}
+@keyframes wob{50%{transform:rotate(15deg) scale(1.15)}}
+.pill{background:var(--yellow);color:#2b2350;border:3px solid var(--line);border-radius:999px;padding:4px 14px;font-weight:700;box-shadow:3px 3px 0 var(--line)}
+.card{background:var(--card);border:4px solid var(--line);border-radius:24px;box-shadow:6px 6px 0 var(--line);padding:16px;margin-top:18px}
+.btn{font:inherit;font-weight:700;cursor:pointer;border:3px solid var(--line);border-radius:16px;background:var(--green);color:#2b2350;padding:6px 14px;box-shadow:3px 3px 0 var(--line)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--line)}
+.btn.p{background:var(--pink)}.btn.y{background:var(--yellow)}.btn.r{background:var(--red)}.btn.s{padding:2px 10px;font-size:14px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--field);border:3px solid var(--line);border-radius:12px;padding:6px 10px;max-width:100%}
+textarea{width:100%;min-height:70px}
+label{font-weight:600;font-size:14px;color:var(--muted);display:block;margin-bottom:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:120px}
+.row input,.row select{width:100%}
+h2{margin:0 0 12px;font-size:22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.stu{border:4px solid var(--line);border-radius:20px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;box-shadow:4px 4px 0 var(--line);background:var(--card)}
+.stu:hover{transform:translateY(-3px)}
+.stu .em{font-size:44px}
+.stu small{color:var(--muted)}
+.hero{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.avatar{font-size:60px;width:92px;height:92px;border-radius:50%;border:4px solid var(--line);display:grid;place-items:center;background:var(--yellow);animation:bounce 2s ease-in-out infinite}
+@keyframes bounce{50%{transform:translateY(-6px)}}
+.hero h1{margin:0;font-size:26px}.hero p{margin:4px 0 0;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px}
+.stat{border:3px solid var(--line);border-radius:18px;padding:10px;text-align:center;color:#2b2350;font-weight:600}
+.stat b{display:block;font-size:28px}.stat input{width:90px;text-align:center;font-size:22px;font-weight:700}
+.sub{border:3px solid var(--line);border-radius:18px;padding:12px;display:flex;gap:12px;align-items:center;color:#2b2350}
+.sub input{background:#fff;color:#2b2350}
+.ring{--p:0;width:74px;height:74px;border-radius:50%;background:conic-gradient(#2b2350 calc(var(--p)*1%),rgba(255,255,255,.7) 0);display:grid;place-items:center;flex:none;border:3px solid var(--line)}
+.ring i{font-style:normal;font-weight:700;background:#fff;border-radius:50%;width:54px;height:54px;display:grid;place-items:center}
+.chip{display:inline-flex;gap:6px;align-items:center;background:#ffd6a5;color:#2b2350;border:3px solid var(--line);border-radius:999px;padding:2px 12px;font-weight:600;margin:0 8px 8px 0}
+.chip button{border:0;background:none;cursor:pointer;font-weight:700;color:#2b2350;font-size:16px}
+.item{border:3px solid var(--line);border-radius:18px;padding:10px 12px;margin-bottom:10px}
+.item .h{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.item .h b{flex:1;min-width:140px}
+.tag{border:3px solid var(--line);border-radius:999px;padding:2px 12px;font-weight:700;font-size:14px;color:#2b2350;white-space:nowrap}
+.done{background:var(--green)}.todo{background:var(--yellow)}.late{background:var(--red)}.prog{background:var(--blue)}
+.muted{color:var(--muted);font-size:14px}
+.note{background:#fff3b0;color:#2b2350;border:3px dashed var(--line);border-radius:18px;padding:12px;display:flex;gap:12px}
+.err{color:var(--red);font-weight:700;margin-top:8px}
+footer{text-align:center;color:var(--muted);margin:24px 0 8px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar0"><div class="logo"><span>⭐</span> Star Tutors</div><div id="who"></div></div>
+  <div id="view"></div>
+  <footer>Made with 💛 by your tuition center teachers</footer>
+</div>
+<script>
+const KEY='star_tutors_v1', HASH='073b87675c155ca03867a526cf5dc48e658fe31d087049c0ae37a741f590f51c';
+const EM=['🦄','🦖','🐼','🦊','🐯','🐸','🐙','🚀','🦁','🐰'], PAL=['#ffb3d1','#b8f0c8','#ffe08a','#a9dcff','#d6c4ff'];
+const L={done:'✅ Done!',todo:'📝 To do',late:'⏰ Late',prog:'🏃 In progress'};
+let S,role=null,cur=null,adding=false,err='',bk=false,armed=-1;
+const today=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const code=()=>'STAR'+Math.floor(1000+Math.random()*9000);
+function blank(o){return Object.assign({id:Date.now()+Math.random(),name:'',age:9,emoji:'🦄',parent:'',code:code(),stars:0,streak:0,subjects:[{n:'Math',p:0},{n:'English',p:0}],weak:[],tasks:[],sessions:[],note:'',priv:''},o)}
+function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+ if(!S||!Array.isArray(S.students)){S={students:[blank({name:'Aisyah (sample)',emoji:'🦄',parent:'Mrs. Rahman',code:'STAR1234',stars:128,streak:6,subjects:[{n:'Math',p:78},{n:'English',p:88}],weak:['Fractions','Word problems'],tasks:[{t:'Fractions worksheet 3',s:'Math',due:today(),st:'todo'}],sessions:[{d:today(),topic:'Fractions',note:'Tried hard, needs more practice on adding fractions.',att:true}],note:'Aisyah is doing great! 🌈'})]};}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function setp(p,v,n){const k=p.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o[k[i]];o[k[k.length-1]]=n?(Number(v)||0):v;save()}
+async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function adminLogin(){const v=document.getElementById('pw').value;let ok=false;try{ok=(await sha(v))===HASH}catch(e){}
+ if(ok){role='admin';err=''}else err='Wrong password 🙈';render()}
+function parentLogin(){const c=document.getElementById('pc').value.trim().toUpperCase();const i=S.students.findIndex(s=>s.code.toUpperCase()===c);
+ if(c&&i>-1){role='parent';cur=i;err=''}else err='Code not found 🔍';render()}
+function logout(){role=null;cur=null;adding=false;bk=false;err='';render()}
+const inp=(p,v,o={})=>`<input type="${o.t||'text'}" value="${esc(v)}" ${o.ph?`placeholder="${o.ph}"`:''} ${o.w?`style="width:${o.w}"`:''} oninput="setp('${p}',this.value,${!!o.n})">`;
+function addStudent(){const g=id=>document.getElementById(id).value;const n=g('an').trim();if(!n){err='Please type a name';return render()}
+ S.students.push(blank({name:n,age:Number(g('aa'))||9,emoji:g('ae'),parent:g('ap').trim()}));save();adding=false;err='';cur=S.students.length-1;render()}
+function delStudent(i){if(armed!==i){armed=i;return render()}S.students.splice(i,1);armed=-1;cur=null;save();render()}
+const add=(i,k,o)=>{S.students[i][k].unshift(o);save();render()},del=(i,k,j)=>{S.students[i][k].splice(j,1);save();render()};
+function addWeak(i){const el=document.getElementById('wk'),v=el.value.trim();if(v){S.students[i].weak.push(v);save();render()}}
+function doRestore(){try{const d=JSON.parse(document.getElementById('bkt').value);if(!Array.isArray(d.students))throw 0;S=d;save();bk=false;err='';cur=null}catch(e){err='That backup text is not valid'}render()}
+
+function loginHTML(){return `<div class="grid" style="margin-top:18px">
+ <div class="card" style="margin:0"><h2>👨‍👩‍👧 Parents</h2><p class="muted">Type the code your teacher gave you.</p><div class="row"><div><input id="pc" placeholder="e.g. STAR1234" onkeydown="if(event.key=='Enter')parentLogin()"></div><button class="btn" onclick="parentLogin()">See report</button></div></div>
+ <div class="card" style="margin:0"><h2>👩‍🏫 Teacher</h2><p class="muted">Password needed to add or edit students.</p><div class="row"><div><input id="pw" type="password" placeholder="Password" onkeydown="if(event.key=='Enter')adminLogin()"></div><button class="btn p" onclick="adminLogin()">Login</button></div></div></div>
+ ${err?`<div class="err">${err}</div>`:''}`}
+
+function home(){
+ const form=adding?`<div class="card"><h2>➕ New student</h2><div class="row"><div><label>Name</label><input id="an"></div><div><label>Age</label><input id="aa" type="number" value="9"></div><div><label>Avatar</label><select id="ae">${EM.map(e=>`<option>${e}</option>`).join('')}</select></div><div><label>Parent name</label><input id="ap"></div></div><p class="muted">A parent code is made automatically. You can change it later.</p><button class="btn" onclick="addStudent()">Save student</button> <button class="btn y" onclick="adding=false;err='';render()">Cancel</button>${err?`<div class="err">${err}</div>`:''}</div>`:'';
+ const bkp=bk?`<div class="card"><h2>💾 Backup</h2><p class="muted">Data is saved in this browser only. Copy this text somewhere safe, or paste an old backup and press Restore.</p><textarea id="bkt">${esc(JSON.stringify(S))}</textarea><br><button class="btn" onclick="doRestore()">Restore</button> <button class="btn y" onclick="bk=false;render()">Close</button>${err?`<div class="err">${err}</div>`:''}</div>`:'';
+ return `<div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">🎒 My Students (${S.students.length})</h2><button class="btn p" onclick="adding=true;render()">➕ Add student</button><button class="btn y" onclick="bk=true;err='';render()">💾 Backup</button></div>
+ <div class="grid" style="margin-top:14px">${S.students.map((s,i)=>`<div class="stu" onclick="cur=${i};render()"><div class="em">${esc(s.emoji)}</div><div><b>${esc(s.name)||'(no name)'}</b><br><small>Age ${esc(s.age)} • Parent: ${esc(s.parent)||'—'}</small><br><small>Code: ${esc(s.code)}</small></div></div>`).join('')||'<p>No students yet.</p>'}</div></div>${form}${bkp}`}
+
+function detail(i){
+ const s=S.students[i],E=role==='admin',b=`students.${i}`;
+ const done=s.tasks.filter(t=>t.st==='done').length,late=s.tasks.filter(t=>t.st==='late').length;
+ const dt=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+ return `
+ <div class="card hero"><div class="avatar">${esc(s.emoji)}</div><div style="flex:1;min-width:200px">
+ ${E?`<div class="row"><div><label>Name</label>${inp(b+'.name',s.name)}</div><div style="max-width:90px"><label>Age</label>${inp(b+'.age',s.age,{t:'number',n:1})}</div></div>
+ <div class="row" style="margin-top:8px"><div><label>Parent name</label>${inp(b+'.parent',s.parent)}</div><div><label>Parent code</label>${inp(b+'.code',s.code)}</div><div style="max-width:90px"><label>Avatar</label><select onchange="setp('${b}.emoji',this.value);render()">${EM.map(e=>`<option ${e===s.emoji?'selected':''}>${e}</option>`).join('')}</select></div></div>`
+ :`<h1>Hi, parent of ${esc(s.name)}! 👋</h1><p>Age ${esc(s.age)} • Here is how ${esc(s.name)} is doing</p>`}</div></div>
+ <div class="stats">
+  <div class="stat" style="background:var(--yellow)">${E?`⭐ ${inp(b+'.stars',s.stars,{t:'number',n:1})}`:`<b>⭐ ${s.stars}</b>`}Stars earned</div>
+  <div class="stat" style="background:#ffb3d1">${E?`🔥 ${inp(b+'.streak',s.streak,{t:'number',n:1})}`:`<b>🔥 ${s.streak}</b>`}Day streak</div>
+  <div class="stat" style="background:var(--green)"><b>✅ ${done}/${s.tasks.length}</b>Tasks done</div>
+  <div class="stat" style="background:${late?'#ff9a9a':'#b8f0c8'}"><b>⏰ ${late}</b>Late tasks</div></div>
+
+ <div class="card"><h2>📊 Subject Progress</h2><div class="grid">${s.subjects.map((x,j)=>`<div class="sub" style="background:${PAL[j%5]}"><div class="ring" style="--p:${x.p}"><i>${x.p}%</i></div><div style="flex:1">
+ ${E?`${inp(`${b}.subjects.${j}.n`,x.n,{w:'100%'})}<input type="range" min="0" max="100" value="${x.p}" style="width:100%;padding:0" oninput="setp('${b}.subjects.${j}.p',this.value,1);this.parentNode.previousElementSibling.style.setProperty('--p',this.value);this.parentNode.previousElementSibling.firstChild.textContent=this.value+'%'" ><button class="btn r s" onclick="del(${i},'subjects',${j})">Remove</button>`:`<div style="font-size:21px;font-weight:700">${esc(x.n)}</div><div>${x.p>=80?'Superstar! 🌟':x.p>=70?'Doing well! 👍':'Keep going! 💪'}</div>`}</div></div>`).join('')}</div>
+ ${E?`<button class="btn s y" style="margin-top:10px" onclick="S.students[${i}].subjects.push({n:'New subject',p:0});save();render()">➕ Subject</button>`:''}</div>
+
+ <div class="card"><h2>🎯 ${E?'Weaknesses (what needs practice)':'Let\'s practise these'}</h2>
+ ${s.weak.map((w,j)=>`<span class="chip">${esc(w)}${E?`<button onclick="del(${i},'weak',${j})">×</button>`:''}</span>`).join('')||'<p class="muted">Nothing noted yet.</p>'}
+ ${E?`<div class="row" style="margin-top:6px"><div><input id="wk" placeholder="e.g. Long division" onkeydown="if(event.key=='Enter')addWeak(${i})"></div><button class="btn" onclick="addWeak(${i})">Add</button></div>`:''}</div>
+
+ <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">📅 Sessions & Reviews</h2>${E?`<button class="btn" onclick="add(${i},'sessions',{d:today(),topic:'',note:'',att:true})">➕ Session</button>`:''}</div><div style="margin-top:12px">
+ ${s.sessions.map((x,j)=>E?`<div class="item"><div class="row"><div style="max-width:160px"><label>Date</label>${inp(`${b}.sessions.${j}.d`,x.d,{t:'date'})}</div><div><label>Topic</label>${inp(`${b}.sessions.${j}.topic`,x.topic)}</div><div style="max-width:130px"><label>Came?</label><select onchange="setp('${b}.sessions.${j}.att',this.value==='1'?true:false)"><option value="1" ${x.att?'selected':''}>✅ Came</option><option value="0" ${x.att?'':'selected'}>❌ Missed</option></select></div></div><label style="margin-top:8px">Review</label><textarea oninput="setp('${b}.sessions.${j}.note',this.value)">${esc(x.note)}</textarea><button class="btn r s" onclick="del(${i},'sessions',${j})">Delete</button></div>`
+ :`<div class="item"><div class="h"><b>${esc(x.topic)||'Session'}</b><span class="muted">${dt(x.d)}</span><span class="tag ${x.att?'done':'late'}">${x.att?'✅ Came':'❌ Missed'}</span></div>${x.note?`<div class="muted" style="margin-top:6px">📝 ${esc(x.note)}</div>`:''}</div>`).join('')||'<p class="muted">No sessions yet.</p>'}</div></div>
+
+ <div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">📚 Assigned Tasks</h2>${E?`<button class="btn" onclick="add(${i},'tasks',{t:'',s:'Math',due:today(),st:'todo'})">➕ Task</button>`:''}</div><div style="margin-top:12px">
+ ${s.tasks.map((x,j)=>E?`<div class="item"><div class="row"><div style="flex:2"><label>Task</label>${inp(`${b}.tasks.${j}.t`,x.t)}</div><div><label>Subject</label>${inp(`${b}.tasks.${j}.s`,x.s)}</div><div style="max-width:160px"><label>Due</label>${inp(`${b}.tasks.${j}.due`,x.due,{t:'date'})}</div><div style="max-width:150px"><label>Status</label><select onchange="setp('${b}.tasks.${j}.st',this.value);render()">${Object.keys(L).map(k=>`<option value="${k}" ${k===x.st?'selected':''}>${L[k]}</option>`).join('')}</select></div></div><button class="btn r s" style="margin-top:8px" onclick="del(${i},'tasks',${j})">Delete</button></div>`
+ :`<div class="item"><div class="h"><span style="font-size:28px">${/math/i.test(x.s)?'🔢':'✏️'}</span><b>${esc(x.t)}<br><span class="muted">${esc(x.s)} • Due ${dt(x.due)}</span></b><span class="tag ${x.st}">${L[x.st]}</span></div></div>`).join('')||'<p class="muted">No tasks yet.</p>'}</div></div>
+
+ <div class="card"><h2>💌 Message from Teacher</h2>${E?`<textarea oninput="setp('${b}.note',this.value)">${esc(s.note)}</textarea>`:`<div class="note"><span style="font-size:36px">👩‍🏫</span><div>${esc(s.note)||'No message yet.'}</div></div>`}</div>
+ ${E?`<div class="card"><h2>🔒 Private notes (parents never see this)</h2><textarea oninput="setp('${b}.priv',this.value)">${esc(s.priv)}</textarea><br><br><button class="btn r" onclick="delStudent(${i})">${armed===i?'Really delete? Click again':'🗑 Delete student'}</button></div>`:''}`}
+
+function render(){
+ document.getElementById('who').innerHTML=role?`<span class="pill">${role==='admin'?'👩‍🏫 Teacher mode':'👨‍👩‍👧 Parent'}</span> <button class="btn s y" onclick="logout()">Logout</button>`:'<span class="pill">Welcome!</span>';
+ const v=document.getElementById('view');
+ if(!role)v.innerHTML=loginHTML();
+ else if(role==='parent')v.innerHTML=detail(cur);
+ else v.innerHTML=cur===null?home():`<button class="btn" style="margin-top:16px" onclick="cur=null;armed=-1;render()">⬅ All students</button>${detail(cur)}`;
+}
+load();render();
+</script>
+</body>
+</html>
