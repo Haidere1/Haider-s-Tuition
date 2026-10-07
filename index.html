@@ -57,6 +57,9 @@ h2{margin:0 0 12px;font-size:22px}
 .err{color:var(--red);font-weight:700;margin-top:8px}
 footer{text-align:center;color:var(--muted);margin:24px 0 8px;font-size:14px}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -65,36 +68,74 @@ footer{text-align:center;color:var(--muted);margin:24px 0 8px;font-size:14px}
   <footer>Made with 💛 by your tuition center teachers</footer>
 </div>
 <script>
-// >>> After deploying the backend, put its URL here (no trailing slash) <<<
-const API=(window.API_URL||'http://localhost:3000').replace(/\/$/,'');
+// >>> 1. Paste your Firebase web config (Project settings -> Your apps -> Web app) <<<
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBUmjqrySlFdzNRPYmoRFuDxvUZ303aNJU",
+  authDomain: "infinityx-ca220.firebaseapp.com",
+  databaseURL: "https://infinityx-ca220-default-rtdb.firebaseio.com",
+  projectId: "infinityx-ca220",
+  storageBucket: "infinityx-ca220.appspot.com",
+  messagingSenderId: "355812147635",
+  appId: "1:355812147635:web:033945beabd2b4e21acbc6",
+  measurementId: "G-RG2ZT4754S"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+// >>> 2. The email of the teacher account you create in Firebase Authentication <<<
+const ADMIN_EMAIL='syedfaizanhaider.fh@gmail.com';
 const EM=['🦄','🦖','🐼','🦊','🐯','🐸','🐙','🚀','🦁','🐰'], PAL=['#ffb3d1','#b8f0c8','#ffe08a','#a9dcff','#d6c4ff'];
 const L={done:'✅ Done!',todo:'📝 To do',late:'⏰ Late',prog:'🏃 In progress'};
-let S={students:[]},role=null,cur=null,adding=false,err='',armed=-1,token=null,timers={};
+let S={students:[]},role=null,cur=null,adding=false,err='',armed=-1,timers={},auth,db;
+const cfgOk=!!firebaseConfig.projectId&&!!ADMIN_EMAIL, cfgErr='Setup not finished: add your Firebase config and teacher email in index.html';
+if(cfgOk){firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.firestore()}
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stat=t=>{const e=document.getElementById('st');if(e)e.textContent=t};
-async function api(path,method='GET',body){
- let r;try{r=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined})}
- catch(e){throw new Error('Cannot reach the server. Try again.')}
- const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Something went wrong');return d}
-function setTok(t,r){token=t;try{t?sessionStorage.setItem('st_tok',t+'|'+r):sessionStorage.removeItem('st_tok')}catch(e){}}
-async function enter(r){if(r==='admin'){S.students=await api('/api/students')}else{S.students=[await api('/api/me')];cur=0}role=r}
-async function adminLogin(){try{const d=await api('/api/admin/login','POST',{password:document.getElementById('pw').value});setTok(d.token,'admin');await enter('admin');err=''}catch(e){err=e.message}render()}
-async function parentLogin(){try{const d=await api('/api/parent/login','POST',{code:document.getElementById('pc').value});setTok(d.token,'parent');await enter('parent');err=''}catch(e){err=e.message}render()}
-function logout(){setTok(null);role=null;cur=null;adding=false;err='';armed=-1;S.students=[];stat('');render()}
-function save(i=cur){if(role!=='admin'||i==null)return;clearTimeout(timers[i]);stat('Saving…');
- timers[i]=setTimeout(async()=>{const s=S.students[i];if(!s)return;try{await api('/api/students/'+s._id,'PUT',s);stat('✅ Saved')}catch(e){stat('⚠️ Not saved: '+e.message)}},600)}
+const AL='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const newCode=()=>{const b=new Uint32Array(8);crypto.getRandomValues(b);return[...b].map(x=>AL[x%AL.length]).join('')};
+const pub=s=>{const{priv,...p}=s;return p};
+async function enter(r,code){
+ if(r==='admin'){const[a,b]=await Promise.all([db.collection('students').get(),db.collection('private').get()]);
+  const pv={};b.forEach(d=>pv[d.id]=d.data().priv||'');
+  S.students=a.docs.map(d=>({...d.data(),code:d.id,priv:pv[d.id]||''})).sort((x,y)=>(x.created||0)-(y.created||0))}
+ else{const d=await db.collection('students').doc(code).get();if(!d.exists)throw new Error('nf');S.students=[{...d.data(),code:d.id}];cur=0}
+ role=r}
+async function adminLogin(){if(!cfgOk){err=cfgErr;return render()}
+ try{await auth.signInWithEmailAndPassword(ADMIN_EMAIL,document.getElementById('pw').value);await enter('admin');err=''}
+ catch(e){const c=e.code||'';err=c==='auth/too-many-requests'?'Too many tries. Wait a few minutes.':c.startsWith('auth/')?'Wrong password 🙈':'Error: '+e.message}render()}
+async function parentLogin(){if(!cfgOk){err=cfgErr;return render()}
+ const c=document.getElementById('pc').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+ if(!c){err='Please type your code';return render()}
+ try{await enter('parent',c);try{sessionStorage.setItem('st_code',c)}catch(e){}err=''}catch(e){err='Code not found 🔍'}render()}
+function logout(){try{sessionStorage.removeItem('st_code')}catch(e){}if(auth)auth.signOut();role=null;cur=null;adding=false;err='';armed=-1;S.students=[];stat('');render()}
+function save(i=cur){if(role!=='admin'||i==null||!S.students[i])return;const c=S.students[i].code;clearTimeout(timers[c]);stat('Saving…');
+ timers[c]=setTimeout(async()=>{const s=S.students.find(x=>x.code===c);if(!s)return;try{const b=db.batch();
+  b.set(db.collection('students').doc(c),pub(s));b.set(db.collection('private').doc(c),{priv:s.priv||''});await b.commit();stat('✅ Saved')}
+  catch(e){stat('⚠️ Not saved: '+e.message)}},600)}
 function setp(p,v,n){const k=p.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o[k[i]];o[k[k.length-1]]=n?(Number(v)||0):v;save(Number(k[1]))}
 const inp=(p,v,o={})=>`<input type="${o.t||'text'}" value="${esc(v)}" ${o.ph?`placeholder="${o.ph}"`:''} ${o.w?`style="width:${o.w}"`:''} oninput="setp('${p}',this.value,${!!o.n})">`;
 async function addStudent(){const g=id=>document.getElementById(id).value;const n=g('an').trim();if(!n){err='Please type a name';return render()}
- try{const d=await api('/api/students','POST',{name:n,age:Number(g('aa'))||9,emoji:g('ae'),parent:g('ap').trim()});S.students.push(d);adding=false;err='';cur=S.students.length-1}catch(e){err=e.message}render()}
+ try{const s={code:newCode(),name:n,age:Number(g('aa'))||9,emoji:g('ae'),parent:g('ap').trim(),stars:0,streak:0,subjects:[{n:'Math',p:0},{n:'English',p:0}],weak:[],tasks:[],sessions:[],note:'',priv:'',created:Date.now()};
+  const b=db.batch();b.set(db.collection('students').doc(s.code),pub(s));b.set(db.collection('private').doc(s.code),{priv:''});await b.commit();
+  S.students.push(s);adding=false;err='';cur=S.students.length-1}catch(e){err=e.message}render()}
 async function delStudent(i){if(armed!==i){armed=i;return render()}
- try{await api('/api/students/'+S.students[i]._id,'DELETE');S.students.splice(i,1);armed=-1;cur=null}catch(e){stat('⚠️ '+e.message)}render()}
+ try{const c=S.students[i].code,b=db.batch();b.delete(db.collection('students').doc(c));b.delete(db.collection('private').doc(c));await b.commit();S.students.splice(i,1);armed=-1;cur=null}catch(e){stat('⚠️ '+e.message)}render()}
 const add=(i,k,o)=>{S.students[i][k].unshift(o);save(i);render()},del=(i,k,j)=>{S.students[i][k].splice(j,1);save(i);render()};
 function addWeak(i){const el=document.getElementById('wk'),v=el.value.trim();if(v){S.students[i].weak.push(v);save(i);render()}}
 
 function loginHTML(){return `<div class="grid" style="margin-top:18px">
- <div class="card" style="margin:0"><h2>👨‍👩‍👧 Parents</h2><p class="muted">Type the code your teacher gave you.</p><div class="row"><div><input id="pc" placeholder="e.g. STAR1234" onkeydown="if(event.key=='Enter')parentLogin()"></div><button class="btn" onclick="parentLogin()">See report</button></div></div>
+ <div class="card" style="margin:0"><h2>👨‍👩‍👧 Parents</h2><p class="muted">Type the code your teacher gave you.</p><div class="row"><div><input id="pc" placeholder="8-letter code" onkeydown="if(event.key=='Enter')parentLogin()"></div><button class="btn" onclick="parentLogin()">See report</button></div></div>
  <div class="card" style="margin:0"><h2>👩‍🏫 Teacher</h2><p class="muted">Password needed to add or edit students.</p><div class="row"><div><input id="pw" type="password" placeholder="Password" onkeydown="if(event.key=='Enter')adminLogin()"></div><button class="btn p" onclick="adminLogin()">Login</button></div></div></div>
  ${err?`<div class="err">${err}</div>`:''}`}
 
@@ -110,7 +151,7 @@ function detail(i){
  return `
  <div class="card hero"><div class="avatar">${esc(s.emoji)}</div><div style="flex:1;min-width:200px">
  ${E?`<div class="row"><div><label>Name</label>${inp(b+'.name',s.name)}</div><div style="max-width:90px"><label>Age</label>${inp(b+'.age',s.age,{t:'number',n:1})}</div></div>
- <div class="row" style="margin-top:8px"><div><label>Parent name</label>${inp(b+'.parent',s.parent)}</div><div><label>Parent code</label>${inp(b+'.code',s.code)}</div><div style="max-width:90px"><label>Avatar</label><select onchange="setp('${b}.emoji',this.value);render()">${EM.map(e=>`<option ${e===s.emoji?'selected':''}>${e}</option>`).join('')}</select></div></div>`
+ <div class="row" style="margin-top:8px"><div><label>Parent name</label>${inp(b+'.parent',s.parent)}</div><div><label>Parent code (give this to the parent)</label><input value="${esc(s.code)}" readonly onclick="this.select()"></div><div style="max-width:90px"><label>Avatar</label><select onchange="setp('${b}.emoji',this.value);render()">${EM.map(e=>`<option ${e===s.emoji?'selected':''}>${e}</option>`).join('')}</select></div></div>`
  :`<h1>Hi, parent of ${esc(s.name)}! 👋</h1><p>Age ${esc(s.age)} • Here is how ${esc(s.name)} is doing</p>`}</div></div>
  <div class="stats">
   <div class="stat" style="background:var(--yellow)">${E?`⭐ ${inp(b+'.stars',s.stars,{t:'number',n:1})}`:`<b>⭐ ${s.stars}</b>`}Stars earned</div>
@@ -144,7 +185,12 @@ function render(){
  else if(role==='parent')v.innerHTML=detail(cur);
  else v.innerHTML=cur===null?home():`<button class="btn" style="margin-top:16px" onclick="cur=null;armed=-1;render()">⬅ All students</button>${detail(cur)}`;
 }
-(async()=>{render();try{const t=sessionStorage.getItem('st_tok');if(t){const[tk,r]=t.split('|');token=tk;await enter(r)}}catch(e){setTok(null);role=null}render()})();
+let first=true;
+function init(){if(!cfgOk){err=cfgErr;return render()}render();
+ auth.onAuthStateChanged(async u=>{if(!first)return;first=false;
+  try{if(u&&u.email===ADMIN_EMAIL)await enter('admin');else{const c=sessionStorage.getItem('st_code');if(c)await enter('parent',c)}}catch(e){role=null}
+  render()})}
+init();
 </script>
 </body>
 </html>

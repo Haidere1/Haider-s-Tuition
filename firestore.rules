@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Teacher email
+    function isTeacher() {
+      return request.auth != null && request.auth.token.email == 'syedfaizanhaider.fh@gmail.com';
+    }
+
+    // Parent-visible report. The document ID is the parent code:
+    // anyone who knows the code can read that ONE document, nobody can list or write.
+    match /students/{code} {
+      allow get: if true;
+      allow list, write: if isTeacher();
+    }
+
+    // Teacher-only private notes
+    match /private/{code} {
+      allow read, write: if isTeacher();
+    }
+  }
+}

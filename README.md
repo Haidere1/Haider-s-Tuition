@@ -1,39 +1,27 @@
-# Star Tutors – Parent Portal
+# Star Tutors – Parent Portal (Firebase)
 
-- `index.html` – the whole frontend (GitHub Pages)
-- `server/` – Node + Express API that talks to MongoDB (deploy on Render / Railway)
+No server needed. `index.html` talks straight to Firebase (Auth + Firestore).
+Deploy the single file on GitHub Pages.
 
-GitHub Pages can only host static files, and a database string placed in `index.html`
-would be readable by every visitor. So the browser talks to the API, and only the API knows the DB string.
+## 1. Firebase setup (5 min)
+1. https://console.firebase.google.com -> Add project (free Spark plan is enough).
+2. Build -> Authentication -> Get started -> enable **Email/Password**.
+   Users tab -> Add user: your email + your teacher password. That is your teacher login.
+3. Build -> Firestore Database -> Create database (production mode).
+4. Firestore -> Rules tab -> paste `firestore.rules`, replace `YOUR_TEACHER_EMAIL`
+   with the email from step 2, click Publish.
+5. Project settings (gear) -> Your apps -> Web (</>) -> register -> copy the config.
 
-## 1. MongoDB Atlas
-1. Reset your database user's password (Database Access) and build a new connection string.
-2. Network Access -> allow `0.0.0.0/0` (hosts like Render use changing IPs).
+## 2. Edit index.html
+Near the top of the script:
+- paste the config into `firebaseConfig`
+- set `ADMIN_EMAIL` to your teacher email (same one as in the rules)
 
-## 2. Deploy the API (Render, free tier)
-1. Push this repo to GitHub.
-2. Render -> New -> Web Service -> pick the repo.
-3. Root Directory: `server` | Build: `npm install` | Start: `npm start`
-4. Environment variables (see `server/.env.example`):
-   `MONGODB_URI`, `JWT_SECRET`, `ADMIN_PASSWORD`, `CLIENT_ORIGIN=https://YOUR-USERNAME.github.io`
-5. Copy the service URL, e.g. `https://star-tutors-api.onrender.com`.
-
-## 3. Point the frontend at the API
-In `index.html`, find the line starting `const API=` and replace
-`http://localhost:3000` with your Render URL.
-
-## 4. GitHub Pages
-Repo -> Settings -> Pages -> Deploy from branch -> `main` / root.
-Your site: `https://YOUR-USERNAME.github.io/REPO-NAME/`
-
-## Local test
-```
-cd server && npm install && cp .env.example .env   # fill it in
-npm run dev                                         # http://localhost:3000
-```
-Then open `index.html` in the browser.
+## 3. GitHub Pages
+Push the repo -> Settings -> Pages -> Deploy from branch `main` / root.
+In Firebase -> Authentication -> Settings -> Authorized domains, add `YOUR-USERNAME.github.io`.
 
 ## How access works
-- Teacher: password checked on the server, 12h token, can add/edit/delete everything.
-- Parent: enters their child's code; the server returns only that child, never the private notes.
-- Free Render services sleep when idle; the first request after a pause can take ~30s.
+- Teacher: types the password on the site (email is fixed in the page). Firebase checks it. Only that account can add, edit or delete.
+- Parent: types their child's 8-character code. The code is the document ID, so a parent can read only that one report. They cannot list other students or see private notes.
+- The Firebase config in index.html is public by design. The security is the rules file, so publish it.
