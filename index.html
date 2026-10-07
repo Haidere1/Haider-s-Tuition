@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Star Tutors – Portal</title>
+<title>Star Tutors – Parent Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#d9f1ff;--card:#fff;--ink:#2b2350;--line:#2b2350;--yellow:#ffd23f;--pink:#ff7eb6;--green:#5ed38b;--blue:#4cb7ff;--orange:#ff9f43;--red:#ff6b6b;--muted:#6d6690;--field:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -60,36 +60,38 @@ footer{text-align:center;color:var(--muted);margin:24px 0 8px;font-size:14px}
 </head>
 <body>
 <div class="wrap">
-  <div class="bar0"><div class="logo"><span>⭐</span> Star Tutors</div><div id="who"></div></div>
+  <div class="bar0"><div class="logo"><span>⭐</span> Star Tutors</div><div><span id="st" class="muted"></span> <span id="who"></span></div></div>
   <div id="view"></div>
   <footer>Made with 💛 by your tuition center teachers</footer>
 </div>
 <script>
-const KEY='star_tutors_v1', HASH='073b87675c155ca03867a526cf5dc48e658fe31d087049c0ae37a741f590f51c';
+// >>> After deploying the backend, put its URL here (no trailing slash) <<<
+const API=(window.API_URL||'http://localhost:3000').replace(/\/$/,'');
 const EM=['🦄','🦖','🐼','🦊','🐯','🐸','🐙','🚀','🦁','🐰'], PAL=['#ffb3d1','#b8f0c8','#ffe08a','#a9dcff','#d6c4ff'];
 const L={done:'✅ Done!',todo:'📝 To do',late:'⏰ Late',prog:'🏃 In progress'};
-let S,role=null,cur=null,adding=false,err='',bk=false,armed=-1;
+let S={students:[]},role=null,cur=null,adding=false,err='',armed=-1,token=null,timers={};
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const code=()=>'STAR'+Math.floor(1000+Math.random()*9000);
-function blank(o){return Object.assign({id:Date.now()+Math.random(),name:'',age:9,emoji:'🦄',parent:'',code:code(),stars:0,streak:0,subjects:[{n:'Math',p:0},{n:'English',p:0}],weak:[],tasks:[],sessions:[],note:'',priv:''},o)}
-function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
- if(!S||!Array.isArray(S.students)){S={students:[blank({name:'Aisyah (sample)',emoji:'🦄',parent:'Mrs. Rahman',code:'STAR1234',stars:128,streak:6,subjects:[{n:'Math',p:78},{n:'English',p:88}],weak:['Fractions','Word problems'],tasks:[{t:'Fractions worksheet 3',s:'Math',due:today(),st:'todo'}],sessions:[{d:today(),topic:'Fractions',note:'Tried hard, needs more practice on adding fractions.',att:true}],note:'Aisyah is doing great! 🌈'})]};}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-function setp(p,v,n){const k=p.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o[k[i]];o[k[k.length-1]]=n?(Number(v)||0):v;save()}
-async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-async function adminLogin(){const v=document.getElementById('pw').value;let ok=false;try{ok=(await sha(v))===HASH}catch(e){}
- if(ok){role='admin';err=''}else err='Wrong password 🙈';render()}
-function parentLogin(){const c=document.getElementById('pc').value.trim().toUpperCase();const i=S.students.findIndex(s=>s.code.toUpperCase()===c);
- if(c&&i>-1){role='parent';cur=i;err=''}else err='Code not found 🔍';render()}
-function logout(){role=null;cur=null;adding=false;bk=false;err='';render()}
+const stat=t=>{const e=document.getElementById('st');if(e)e.textContent=t};
+async function api(path,method='GET',body){
+ let r;try{r=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined})}
+ catch(e){throw new Error('Cannot reach the server. Try again.')}
+ const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Something went wrong');return d}
+function setTok(t,r){token=t;try{t?sessionStorage.setItem('st_tok',t+'|'+r):sessionStorage.removeItem('st_tok')}catch(e){}}
+async function enter(r){if(r==='admin'){S.students=await api('/api/students')}else{S.students=[await api('/api/me')];cur=0}role=r}
+async function adminLogin(){try{const d=await api('/api/admin/login','POST',{password:document.getElementById('pw').value});setTok(d.token,'admin');await enter('admin');err=''}catch(e){err=e.message}render()}
+async function parentLogin(){try{const d=await api('/api/parent/login','POST',{code:document.getElementById('pc').value});setTok(d.token,'parent');await enter('parent');err=''}catch(e){err=e.message}render()}
+function logout(){setTok(null);role=null;cur=null;adding=false;err='';armed=-1;S.students=[];stat('');render()}
+function save(i=cur){if(role!=='admin'||i==null)return;clearTimeout(timers[i]);stat('Saving…');
+ timers[i]=setTimeout(async()=>{const s=S.students[i];if(!s)return;try{await api('/api/students/'+s._id,'PUT',s);stat('✅ Saved')}catch(e){stat('⚠️ Not saved: '+e.message)}},600)}
+function setp(p,v,n){const k=p.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o[k[i]];o[k[k.length-1]]=n?(Number(v)||0):v;save(Number(k[1]))}
 const inp=(p,v,o={})=>`<input type="${o.t||'text'}" value="${esc(v)}" ${o.ph?`placeholder="${o.ph}"`:''} ${o.w?`style="width:${o.w}"`:''} oninput="setp('${p}',this.value,${!!o.n})">`;
-function addStudent(){const g=id=>document.getElementById(id).value;const n=g('an').trim();if(!n){err='Please type a name';return render()}
- S.students.push(blank({name:n,age:Number(g('aa'))||9,emoji:g('ae'),parent:g('ap').trim()}));save();adding=false;err='';cur=S.students.length-1;render()}
-function delStudent(i){if(armed!==i){armed=i;return render()}S.students.splice(i,1);armed=-1;cur=null;save();render()}
-const add=(i,k,o)=>{S.students[i][k].unshift(o);save();render()},del=(i,k,j)=>{S.students[i][k].splice(j,1);save();render()};
-function addWeak(i){const el=document.getElementById('wk'),v=el.value.trim();if(v){S.students[i].weak.push(v);save();render()}}
-function doRestore(){try{const d=JSON.parse(document.getElementById('bkt').value);if(!Array.isArray(d.students))throw 0;S=d;save();bk=false;err='';cur=null}catch(e){err='That backup text is not valid'}render()}
+async function addStudent(){const g=id=>document.getElementById(id).value;const n=g('an').trim();if(!n){err='Please type a name';return render()}
+ try{const d=await api('/api/students','POST',{name:n,age:Number(g('aa'))||9,emoji:g('ae'),parent:g('ap').trim()});S.students.push(d);adding=false;err='';cur=S.students.length-1}catch(e){err=e.message}render()}
+async function delStudent(i){if(armed!==i){armed=i;return render()}
+ try{await api('/api/students/'+S.students[i]._id,'DELETE');S.students.splice(i,1);armed=-1;cur=null}catch(e){stat('⚠️ '+e.message)}render()}
+const add=(i,k,o)=>{S.students[i][k].unshift(o);save(i);render()},del=(i,k,j)=>{S.students[i][k].splice(j,1);save(i);render()};
+function addWeak(i){const el=document.getElementById('wk'),v=el.value.trim();if(v){S.students[i].weak.push(v);save(i);render()}}
 
 function loginHTML(){return `<div class="grid" style="margin-top:18px">
  <div class="card" style="margin:0"><h2>👨‍👩‍👧 Parents</h2><p class="muted">Type the code your teacher gave you.</p><div class="row"><div><input id="pc" placeholder="e.g. STAR1234" onkeydown="if(event.key=='Enter')parentLogin()"></div><button class="btn" onclick="parentLogin()">See report</button></div></div>
@@ -98,9 +100,8 @@ function loginHTML(){return `<div class="grid" style="margin-top:18px">
 
 function home(){
  const form=adding?`<div class="card"><h2>➕ New student</h2><div class="row"><div><label>Name</label><input id="an"></div><div><label>Age</label><input id="aa" type="number" value="9"></div><div><label>Avatar</label><select id="ae">${EM.map(e=>`<option>${e}</option>`).join('')}</select></div><div><label>Parent name</label><input id="ap"></div></div><p class="muted">A parent code is made automatically. You can change it later.</p><button class="btn" onclick="addStudent()">Save student</button> <button class="btn y" onclick="adding=false;err='';render()">Cancel</button>${err?`<div class="err">${err}</div>`:''}</div>`:'';
- const bkp=bk?`<div class="card"><h2>💾 Backup</h2><p class="muted">Data is saved in this browser only. Copy this text somewhere safe, or paste an old backup and press Restore.</p><textarea id="bkt">${esc(JSON.stringify(S))}</textarea><br><button class="btn" onclick="doRestore()">Restore</button> <button class="btn y" onclick="bk=false;render()">Close</button>${err?`<div class="err">${err}</div>`:''}</div>`:'';
- return `<div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">🎒 My Students (${S.students.length})</h2><button class="btn p" onclick="adding=true;render()">➕ Add student</button><button class="btn y" onclick="bk=true;err='';render()">💾 Backup</button></div>
- <div class="grid" style="margin-top:14px">${S.students.map((s,i)=>`<div class="stu" onclick="cur=${i};render()"><div class="em">${esc(s.emoji)}</div><div><b>${esc(s.name)||'(no name)'}</b><br><small>Age ${esc(s.age)} • Parent: ${esc(s.parent)||'—'}</small><br><small>Code: ${esc(s.code)}</small></div></div>`).join('')||'<p>No students yet.</p>'}</div></div>${form}${bkp}`}
+ return `<div class="card"><div class="row" style="align-items:center"><h2 style="margin:0;flex:1">🎒 My Students (${S.students.length})</h2><button class="btn p" onclick="adding=true;render()">➕ Add student</button></div>
+ <div class="grid" style="margin-top:14px">${S.students.map((s,i)=>`<div class="stu" onclick="cur=${i};render()"><div class="em">${esc(s.emoji)}</div><div><b>${esc(s.name)||'(no name)'}</b><br><small>Age ${esc(s.age)} • Parent: ${esc(s.parent)||'—'}</small><br><small>Code: ${esc(s.code)}</small></div></div>`).join('')||'<p>No students yet.</p>'}</div></div>${form}`}
 
 function detail(i){
  const s=S.students[i],E=role==='admin',b=`students.${i}`;
@@ -143,7 +144,7 @@ function render(){
  else if(role==='parent')v.innerHTML=detail(cur);
  else v.innerHTML=cur===null?home():`<button class="btn" style="margin-top:16px" onclick="cur=null;armed=-1;render()">⬅ All students</button>${detail(cur)}`;
 }
-load();render();
+(async()=>{render();try{const t=sessionStorage.getItem('st_tok');if(t){const[tk,r]=t.split('|');token=tk;await enter(r)}}catch(e){setTok(null);role=null}render()})();
 </script>
 </body>
 </html>
